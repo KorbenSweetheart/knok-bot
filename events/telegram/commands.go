@@ -2,11 +2,12 @@ package telegram
 
 import (
 	"errors"
+	"io/fs"
+	"knok-bot/clients/telegram"
+	"knok-bot/lib/e"
+	"knok-bot/storage"
 	"log"
 	"net/url"
-	"read-reminder-bot/clients/telegram"
-	"read-reminder-bot/lib/e"
-	"read-reminder-bot/storage"
 	"strings"
 )
 
@@ -73,8 +74,13 @@ func (p *Processor) sendRandom(chatID int, username string) (err error) {
 	defer func() { err = e.WrapIfErr("can't do command: send random", err) }()
 
 	page, err := p.storage.PickRandom(username)
-	if err != nil && !errors.Is(err, storage.ErrNoSavedPages) {
+	if err != nil && !errors.Is(err, storage.ErrNoSavedPages) && !errors.Is(err, fs.ErrNotExist) {
 		return err
+	}
+
+	// add check username folder, if don't exists, sendmsg that no links saved.
+	if errors.Is(err, fs.ErrNotExist) {
+		return p.tg.SendMessage(chatID, msgNoSavedPages)
 	}
 
 	if errors.Is(err, storage.ErrNoSavedPages) {

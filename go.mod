@@ -1,3 +1,3 @@
-module read-reminder-bot
+module knok-bot
 
 go 1.25.2

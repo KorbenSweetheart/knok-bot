@@ -2,10 +2,10 @@ package telegram
 
 import (
 	"errors"
-	"read-reminder-bot/clients/telegram"
-	"read-reminder-bot/events"
-	"read-reminder-bot/lib/e"
-	"read-reminder-bot/storage"
+	"knok-bot/clients/telegram"
+	"knok-bot/events"
+	"knok-bot/lib/e"
+	"knok-bot/storage"
 )
 
 type Processor struct {

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"read-reminder-bot/lib/e"
+	"knok-bot/lib/e"
 )
 
 type Storage interface {

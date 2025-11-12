@@ -4,11 +4,11 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"knok-bot/lib/e"
+	"knok-bot/storage"
 	"math/rand"
 	"os"
 	"path/filepath"
-	"read-reminder-bot/lib/e"
-	"read-reminder-bot/storage"
 )
 
 type Storage struct {

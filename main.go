@@ -2,29 +2,37 @@ package main
 
 import (
 	"flag"
+	tgClient "knok-bot/clients/telegram"
+	event_consumer "knok-bot/consumer/event-consumer"
+	"knok-bot/events/telegram"
+	"knok-bot/storage/files"
 	"log"
-	"read-reminder-bot/clients/telegram"
 )
 
 const (
-	tgBotHost = "api.telegram.org" // its better to get it the same way as Token -> via parameter.
+	tgBotHost   = "api.telegram.org" // its better to get it the same way as Token -> via parameter.
+	storagePath = "file_storage"
+	batchSize   = 100
 )
 
 func main() {
 
-	tgClient = telegram.New(tgBotHost, mustToken())
+	eventsProcessor := telegram.New(
+		tgClient.New(tgBotHost, mustToken()),
+		files.New(storagePath),
+	)
 
-	// fetcher = fetcher.New()
+	log.Print("service started")
 
-	// processor = processor.New()
-
-	// consumer.Start(fetcher, processor)
-
+	consumer := event_consumer.New(eventsProcessor, eventsProcessor, batchSize)
+	if err := consumer.Start(); err != nil {
+		log.Fatal("service is stopped", err)
+	}
 }
 
 func mustToken() string {
 	token := flag.String(
-		"token",
+		"tg-bot-token",
 		"",
 		"token for access to telegram bot",
 	)
