@@ -56,7 +56,7 @@ func (p *Processor) Fetch(limit int) ([]events.Event, error) {
 func (p *Processor) Process(event events.Event) error {
 	switch event.Type {
 	case events.Message:
-		p.processMessage(event)
+		return p.processMessage(event)
 	default:
 		return e.Wrap("can't process message", ErrUnknownEventType)
 	}
@@ -65,8 +65,13 @@ func (p *Processor) Process(event events.Event) error {
 func (p *Processor) processMessage(event events.Event) error {
 	meta, err := meta(event)
 	if err != nil {
+		return e.Wrap("can't process message", err) // rewrite with defer and wrapiferror !!!!!
+	}
+
+	if err := p.doCmd(event.Text, meta.ChatID, meta.Username); err != nil {
 		return e.Wrap("can't process message", err)
 	}
+	return nil
 }
 
 func meta(event events.Event) (Meta, error) {

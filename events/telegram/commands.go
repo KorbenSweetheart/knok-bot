@@ -1,6 +1,7 @@
 package telegram
 
 import (
+	"errors"
 	"log"
 	"net/url"
 	"read-reminder-bot/clients/telegram"
@@ -18,25 +19,29 @@ const (
 func (p *Processor) doCmd(text string, chatID int, username string) error {
 	text = strings.TrimSpace(text)
 
-	log.Printf("got new command '%s' from '%s'", text, username)
+	log.Printf("got new command '%s' from '%s'", text, username) // to collect logs and what cmds people use.
 
+	// Creating router
 	if isAddCmd(text) { // add page: http://...
-		// TODO: AddPage()
+		return p.savePage(chatID, text, username)
 	}
 
 	switch text {
 	case RndCmd:
+		return p.sendRandom(chatID, username)
 	case HelpCmd:
+		return p.sendHelp(chatID)
 	case StartCmd:
+		return p.sendHello(chatID)
 	default:
+		return p.tg.SendMessage(chatID, msgUnknownCommand)
 	}
-
 }
 
 func (p *Processor) savePage(chatID int, pageURL string, username string) (err error) {
 	defer func() { err = e.WrapIfErr("can't do command: save page", err) }()
 
-	sendMsg := NewMessageSender(chatID, p.tg) // with closure
+	sendMsg := NewMessageSender(chatID, p.tg) // with closure just to try out closure
 
 	page := &storage.Page{
 		URL:      pageURL,
@@ -67,6 +72,28 @@ func (p *Processor) savePage(chatID int, pageURL string, username string) (err e
 func (p *Processor) sendRandom(chatID int, username string) (err error) {
 	defer func() { err = e.WrapIfErr("can't do command: send random", err) }()
 
+	page, err := p.storage.PickRandom(username)
+	if err != nil && !errors.Is(err, storage.ErrNoSavedPages) {
+		return err
+	}
+
+	if errors.Is(err, storage.ErrNoSavedPages) {
+		return p.tg.SendMessage(chatID, msgNoSavedPages)
+	}
+
+	if err := p.tg.SendMessage(chatID, page.URL); err != nil {
+		return err
+	}
+
+	return p.storage.Remove(page)
+}
+
+func (p *Processor) sendHelp(chatId int) error {
+	return p.tg.SendMessage(chatId, msgHelp)
+}
+
+func (p *Processor) sendHello(chatId int) error {
+	return p.tg.SendMessage(chatId, msgHello)
 }
 
 func NewMessageSender(chatID int, tg *telegram.Client) func(string) error { // Closure https://en.wikipedia.org/wiki/Closure_(computer_programming)
