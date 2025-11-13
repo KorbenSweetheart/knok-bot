@@ -10,9 +10,10 @@ import (
 )
 
 const (
-	tgBotHost   = "api.telegram.org" // its better to get it the same way as Token -> via parameter.
-	storagePath = "file_storage"
-	batchSize   = 100
+	tgBotHost      = "api.telegram.org" // its better to get it the same way as Token -> via parameter.
+	storagePath    = "file_storage"
+	batchSize      = 100
+	updatesTimeout = 60 // seconds
 )
 
 func main() {
@@ -24,7 +25,7 @@ func main() {
 
 	log.Print("service started")
 
-	consumer := event_consumer.New(eventsProcessor, eventsProcessor, batchSize)
+	consumer := event_consumer.New(eventsProcessor, eventsProcessor, batchSize, updatesTimeout)
 	if err := consumer.Start(); err != nil {
 		log.Fatal("service is stopped", err)
 	}

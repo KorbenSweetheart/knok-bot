@@ -1,7 +1,7 @@
 package events
 
 type Fetcher interface {
-	Fetch(limit int) ([]Event, error) // offset will be implemented inside
+	Fetch(limit int, timeout int) ([]Event, error) // offset will be implemented inside
 }
 
 type Processor interface {
