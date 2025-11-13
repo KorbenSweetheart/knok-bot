@@ -20,7 +20,7 @@ type Meta struct {
 }
 
 var (
-	ErrEmptyUpdatesList = errors.New("empty updates list")
+	// ErrEmptyUpdatesList = errors.New("empty updates list")
 	ErrUnknownEventType = errors.New("unknown event type")
 	ErrUnknownMetaType  = errors.New("unknown meta type")
 )
@@ -39,7 +39,7 @@ func (p *Processor) Fetch(limit int, timeout int) ([]events.Event, error) {
 	}
 
 	if len(updates) == 0 {
-		return nil, e.Wrap("can't get events", ErrEmptyUpdatesList)
+		return nil, nil // e.Wrap("can't get events", ErrEmptyUpdatesList)
 	}
 
 	res := make([]events.Event, 0, len(updates))
