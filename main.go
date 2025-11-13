@@ -27,7 +27,12 @@ func main() {
 
 	consumer := event_consumer.New(eventsProcessor, eventsProcessor, batchSize, updatesTimeout)
 	if err := consumer.Start(); err != nil {
-		log.Fatal("service is stopped", err)
+		switch err {
+		case event_consumer.ErrCriticalFailure:
+			log.Fatal("service is stopped", event_consumer.ErrCriticalFailure) // tmp solution need to handle it gracefully
+		default:
+			log.Fatal("service is stopped", err)
+		}
 	}
 }
 

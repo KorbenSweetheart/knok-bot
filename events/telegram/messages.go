@@ -3,6 +3,7 @@ package telegram
 const msgHelp = `I can save articles for later. And offer them to read on request.
 
 To save the page, just send me a link to it.
+e.g. https://go.dev/
 
 You can request an article by sending this command:
 

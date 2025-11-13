@@ -1,7 +1,9 @@
 package event_consumer
 
 import (
+	"errors"
 	"knok-bot/events"
+	"knok-bot/lib/e"
 	"log"
 	"time"
 )
@@ -14,9 +16,13 @@ type Consumer struct {
 }
 
 const (
-	maxBackoff = 30 * time.Second
-	// maxFailCount = 10
+	maxBackoff            = 30 * time.Second
+	failThreshold         = 10
+	pauseDuration         = 15 * time.Minute
+	criticalFailThreshold = 20
 )
+
+var ErrCriticalFailure = errors.New("too many consecutive failures")
 
 func New(fetcher events.Fetcher, processor events.Processor, batchSize int, timeout int) Consumer {
 	return Consumer{
@@ -29,23 +35,40 @@ func New(fetcher events.Fetcher, processor events.Processor, batchSize int, time
 
 func (c *Consumer) Start() error {
 	backoff := 2 * time.Second
+	failCount := 0
 
 	for {
-		// tip implement retry in fetcher with 3 tries and window of few seconds. We can even make exponential raise for window. and gave up on some limit.
+
+		// refactor with context and switch
+
+		if failCount >= criticalFailThreshold {
+			log.Printf("[ERR] consumer: %s", ErrCriticalFailure)
+			return e.Wrap("[ERR] consumer:", ErrCriticalFailure) // handle it in main.
+		}
+
 		gotEvents, err := c.fetcher.Fetch(c.batchSize, c.updatesTimeout)
 		if err != nil {
 			log.Printf("[ERR] consumer: %s", err.Error())
 
 			time.Sleep(backoff)
 			backoff *= 2
+			failCount++
+
 			if backoff > maxBackoff {
 				backoff = maxBackoff
+			}
+
+			if failCount >= failThreshold {
+				log.Printf("[WARN] too many transient errors, pausing %v", pauseDuration)
+				time.Sleep(pauseDuration)
 			}
 
 			continue
 		}
 
-		backoff = 2 * time.Second //backoff reset in case of success
+		//backoff and failcount reset in case of success
+		backoff = 2 * time.Second
+		failCount = 0
 
 		if len(gotEvents) == 0 {
 			time.Sleep(1 * time.Second)
@@ -70,7 +93,9 @@ Problem -> solutions
 
 func (c *Consumer) handleEvents(events []events.Event) error {
 	// for concurrency, hint: sync.WaitGroup{}
+	// var wg sync.WaitGroup
 	for _, event := range events {
+		// wg.Add(1)
 		log.Printf("got new event: %s", event.Text)
 
 		if err := c.processor.Process(event); err != nil {
