@@ -1,10 +1,12 @@
 ## Ideas
 
 - [x] implement long polling for Updates and doRequest (Fetch)
-- [ ] implement suggested improvements
+- [x] implement exponential backoff
+- [ ] improve error handling and bad request cases:
+    - [ ] Max consecutive failures
+    - [ ] errors classification and program failure in case of really critical erros (badToken or Unauthorized)
+    - [ ] [circuit breaker pattern](https://learn.microsoft.com/en-us/previous-versions/msp-n-p/dn589784(v=pandp.10)) in case of transient faults
+- [ ] implement controlled goroutine pool for concurrent event processing.
 - [ ] implement SQLlite
 - [ ] try something with loging (LOKI or other)
-- [ ] fix loop with "[ERR] consumer: can't get events: empty updates list"
-> don’t treat an empty getUpdates result as an error and use long-polling (timeout) + exponential backoff;
-> also use a controlled goroutine pool for concurrent processing. The docs show getUpdates is designed for long polling and that updates are stored up to 24 hours;
-> you should rely on that instead of spinning when the server returns [].
+- [x] fix issue with "[ERR] consumer: can't get events: empty updates list"
