@@ -5,6 +5,7 @@ import (
 	"knok-bot/events"
 	"knok-bot/lib/e"
 	"log"
+	"sync"
 	"time"
 )
 
@@ -39,7 +40,7 @@ func (c *Consumer) Start() error {
 
 	for {
 
-		// refactor with context and switch
+		// refactor with context and select
 
 		if failCount >= criticalFailThreshold {
 			log.Printf("[ERR] consumer: %s", ErrCriticalFailure)
@@ -91,19 +92,29 @@ Problem -> solutions
 3. concurrency (parallel handle)
 */
 
-func (c *Consumer) handleEvents(events []events.Event) error {
+func (c *Consumer) handleEvents(evts []events.Event) error {
 	// for concurrency, hint: sync.WaitGroup{}
-	// var wg sync.WaitGroup
-	for _, event := range events {
-		// wg.Add(1)
+	// Issue: Unlimited concurrency:
+	// use a worker pool
+	// or a semaphore / buffered channel to limit concurrency
+
+	var wg sync.WaitGroup
+
+	for _, event := range evts {
+
 		log.Printf("got new event: %s", event.Text)
 
-		if err := c.processor.Process(event); err != nil {
-			log.Printf("can't handle event: %s", err.Error())
+		wg.Add(1)
+		go func(event events.Event) {
+			defer wg.Done()
 
-			continue
-		}
+			if err := c.processor.Process(event); err != nil {
+				log.Printf("can't handle event: %s", err.Error())
+			}
+		}(event)
 	}
+
+	wg.Wait()
 
 	return nil
 }
