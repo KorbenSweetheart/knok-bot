@@ -71,7 +71,7 @@ func (c *Consumer) Start() error {
 		backoff = 2 * time.Second
 		failCount = 0
 
-		if len(gotEvents) == 0 {
+		if len(gotEvents) == 0 { // !!! we check this on a Fetch() level, and there we return nil, so, its not possible to get empty gotEvents
 			time.Sleep(1 * time.Second)
 
 			continue
@@ -92,12 +92,29 @@ Problem -> solutions
 3. concurrency (parallel handle)
 */
 
-func (c *Consumer) handleEvents(evts []events.Event) error {
-	// for concurrency, hint: sync.WaitGroup{}
-	// Issue: Unlimited concurrency:
-	// use a worker pool
-	// or a semaphore / buffered channel to limit concurrency
+/* Original handleEvents version
+func (c *Consumer) handleEvents(events []events.Event) error {
 
+	for _, event := range events {
+		log.Printf("got new event: %s", event.Text)
+
+		if err := c.processor.Process(event); err != nil {
+			log.Printf("can't handle event: %s", err.Error())
+
+			continue
+		}
+	}
+
+	return nil
+}
+*/
+
+func (c *Consumer) handleEvents(evts []events.Event) error {
+
+	// Issue: Unlimited concurrency:
+	// Options: use a worker pool or a semaphore / buffered channel to limit concurrency
+
+	/* Unbounded concurrency - numEvents == goroutines
 	var wg sync.WaitGroup
 
 	for _, event := range evts {
@@ -116,5 +133,30 @@ func (c *Consumer) handleEvents(evts []events.Event) error {
 
 	wg.Wait()
 
+	return nil
+	*/
+
+	// Example of semaphore / buffered channel
+
+	var wg sync.WaitGroup
+
+	concurrency := 10
+	sem := make(chan struct{}, concurrency)
+
+	for _, ev := range evts {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(ev events.Event) {
+			defer wg.Done()
+			defer func() { <-sem }()
+
+			log.Printf("got new event: %s", ev.Text)
+			if err := c.processor.Process(ev); err != nil {
+				log.Printf("can't handle event: %v", err)
+			}
+		}(ev)
+	}
+
+	wg.Wait()
 	return nil
 }

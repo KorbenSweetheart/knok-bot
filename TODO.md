@@ -10,3 +10,4 @@
 - [ ] implement SQLlite
 - [ ] try something with loging (LOKI or other)
 - [x] fix issue with "[ERR] consumer: can't get events: empty updates list"
+- [ ] Add metrics (requests/sec, errors, processing latency) so you can spot bursts or issues.
