@@ -57,6 +57,8 @@ func (s Storage) PickRandom(userName string) (page *storage.Page, err error) {
 
 	path := filepath.Join(s.basePath, userName)
 
+	// TODO: check user folder, if not exist, return ErrNoSavedPages // WARNING: maybe we already did it.
+
 	files, err := os.ReadDir(path)
 	if err != nil {
 		return nil, err

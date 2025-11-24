@@ -20,7 +20,7 @@ var ErrNoSavedPages = errors.New("no saved page")
 type Page struct {
 	URL      string
 	UserName string // who send it
-	// Created time.Time // if we want to improve and send old or fresh articles
+	// TODO: Created time.Time // if we want to improve and send old or fresh articles
 }
 
 func (p Page) Hash() (string, error) {

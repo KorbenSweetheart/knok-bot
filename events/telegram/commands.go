@@ -78,7 +78,7 @@ func (p *Processor) sendRandom(chatID int, username string) (err error) {
 		return err
 	}
 
-	// add check username folder, if don't exists, sendmsg that no links saved.
+	// TODO: add check username folder, if don't exists, sendmsg that no links saved. // WARNING: maybe we already did it.
 	if errors.Is(err, fs.ErrNotExist) {
 		return p.tg.SendMessage(chatID, msgNoSavedPages)
 	}
