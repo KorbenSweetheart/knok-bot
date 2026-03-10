@@ -34,7 +34,7 @@ func New(client *telegram.Client, storage storage.Storage) *Processor {
 }
 
 func (p *Processor) Fetch(ctx context.Context, limit int, timeout int) ([]events.Event, error) {
-	updates, err := p.tg.Updates(p.offset, limit, timeout)
+	updates, err := p.tg.Updates(ctx, p.offset, limit, timeout)
 	if err != nil {
 		return nil, e.Wrap("can't get events", err)
 	}

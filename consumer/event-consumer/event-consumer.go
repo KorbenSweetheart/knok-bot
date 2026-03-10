@@ -56,7 +56,11 @@ func (c *Consumer) Start(ctx context.Context) error {
 
 		gotEvents, err := c.fetcher.Fetch(ctx, c.batchSize, c.updatesTimeout)
 		if err != nil {
-			log.Printf("[ERR] consumer: %s", err.Error())
+			if errors.Is(err, context.Canceled) {
+				return ctx.Err()
+			}
+
+			log.Printf("[ERR] consumer: %v", err)
 
 			// Fix: context-aware backoff delay
 			select {

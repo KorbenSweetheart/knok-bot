@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	tgClient "knok-bot/clients/telegram"
 	event_consumer "knok-bot/consumer/event-consumer"
@@ -47,11 +48,16 @@ func main() {
 
 	consumer := event_consumer.New(eventsProcessor, eventsProcessor, batchSize, updatesTimeout)
 	if err := consumer.Start(ctx); err != nil {
-		switch err {
-		case event_consumer.ErrCriticalFailure:
-			log.Fatal("service is stopped", event_consumer.ErrCriticalFailure) // tmp solution need to handle it gracefully
+		if errors.Is(err, context.Canceled) {
+			log.Print("service stopped gracefully")
+			return // Exits cleanly with status 0
+		}
+
+		switch {
+		case errors.Is(err, event_consumer.ErrCriticalFailure):
+			log.Fatal("service crashed: ", event_consumer.ErrCriticalFailure) // tmp solution need to handle it gracefully
 		default:
-			log.Fatal("service is stopped", err)
+			log.Fatal("service crashed unexpectedly: ", err)
 		}
 	}
 }

@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"knok-bot/storage"
 
@@ -29,7 +30,7 @@ func New(path string) (*Storage, error) {
 
 // Save saves page to storage.
 func (s *Storage) Save(ctx context.Context, p *storage.Page) error {
-	q := `INSERT INTO pages (url, user_name) VALUE(?, ?)`
+	q := `INSERT INTO pages (url, user_name) VALUES(?, ?)`
 
 	if _, err := s.db.ExecContext(ctx, q, p.URL, p.UserName); err != nil {
 		return fmt.Errorf("can't save page: %w", err)
@@ -45,10 +46,10 @@ func (s *Storage) PickRandom(ctx context.Context, userName string) (*storage.Pag
 	var url string
 
 	err := s.db.QueryRowContext(ctx, q, userName).Scan(&url)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, storage.ErrNoSavedPages
+		}
 		return nil, fmt.Errorf("can't pick random page: %w", err)
 	}
 
