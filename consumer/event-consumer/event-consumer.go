@@ -1,6 +1,7 @@
 package event_consumer
 
 import (
+	"context"
 	"errors"
 	"knok-bot/events"
 	"knok-bot/lib/e"
@@ -34,24 +35,36 @@ func New(fetcher events.Fetcher, processor events.Processor, batchSize int, time
 	}
 }
 
-func (c *Consumer) Start() error {
+func (c *Consumer) Start(ctx context.Context) error {
 	backoff := 2 * time.Second
 	failCount := 0
 
 	for {
 
-		// refactor with context and select
+		// 1. Check if context is already canceled before fetching
+		select {
+		case <-ctx.Done():
+			log.Println("consumer stopped by context") // TODO Add proper logger
+			return ctx.Err()
+		default:
+		}
 
 		if failCount >= criticalFailThreshold {
 			log.Printf("[ERR] consumer: %s", ErrCriticalFailure)
 			return e.Wrap("[ERR] consumer:", ErrCriticalFailure) // handle it in main.
 		}
 
-		gotEvents, err := c.fetcher.Fetch(c.batchSize, c.updatesTimeout)
+		gotEvents, err := c.fetcher.Fetch(ctx, c.batchSize, c.updatesTimeout)
 		if err != nil {
 			log.Printf("[ERR] consumer: %s", err.Error())
 
-			time.Sleep(backoff)
+			// Fix: context-aware backoff delay
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(backoff):
+			}
+
 			backoff *= 2
 			failCount++
 
@@ -61,9 +74,13 @@ func (c *Consumer) Start() error {
 
 			if failCount >= failThreshold {
 				log.Printf("[WARN] too many transient errors, pausing %v", pauseDuration)
-				time.Sleep(pauseDuration)
+				// Context-aware long pause
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-time.After(pauseDuration):
+				}
 			}
-
 			continue
 		}
 
@@ -72,12 +89,16 @@ func (c *Consumer) Start() error {
 		failCount = 0
 
 		if len(gotEvents) == 0 { // !!! we check this on a Fetch() level, and there we return nil, so, its not possible to get empty gotEvents
-			time.Sleep(1 * time.Second)
-
+			// Context-aware short delay
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(1 * time.Second):
+			}
 			continue
 		}
-
-		if err := c.handleEvents(gotEvents); err != nil {
+		// Pass context to handler
+		if err := c.handleEvents(ctx, gotEvents); err != nil {
 			log.Print(err)
 
 			continue
@@ -109,7 +130,7 @@ func (c *Consumer) handleEvents(events []events.Event) error {
 }
 */
 
-func (c *Consumer) handleEvents(evts []events.Event) error {
+func (c *Consumer) handleEvents(ctx context.Context, evts []events.Event) error {
 
 	// Issue: Unlimited concurrency:
 	// Options: use a worker pool or a semaphore / buffered channel to limit concurrency
@@ -144,6 +165,16 @@ func (c *Consumer) handleEvents(evts []events.Event) error {
 	sem := make(chan struct{}, concurrency)
 
 	for _, ev := range evts {
+
+		select {
+		case <-ctx.Done():
+			// Context canceled, stop processing the rest of the batch, but wait for active ones to finish
+			log.Println("stopping batch processing: context canceled")
+			wg.Wait()
+			return ctx.Err()
+		case sem <- struct{}{}:
+		}
+
 		wg.Add(1)
 		sem <- struct{}{}
 		go func(ev events.Event) {
@@ -151,7 +182,8 @@ func (c *Consumer) handleEvents(evts []events.Event) error {
 			defer func() { <-sem }()
 
 			log.Printf("got new event: %s", ev.Text)
-			if err := c.processor.Process(ev); err != nil {
+
+			if err := c.processor.Process(ctx, ev); err != nil {
 				log.Printf("can't handle event: %v", err)
 			}
 		}(ev)

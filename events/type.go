@@ -1,11 +1,13 @@
 package events
 
+import "context"
+
 type Fetcher interface {
-	Fetch(limit int, timeout int) ([]Event, error) // offset will be implemented inside
+	Fetch(ctx context.Context, limit int, timeout int) ([]Event, error) // offset will be implemented inside
 }
 
 type Processor interface {
-	Process(e Event) error
+	Process(ctx context.Context, e Event) error
 }
 
 type Type int
